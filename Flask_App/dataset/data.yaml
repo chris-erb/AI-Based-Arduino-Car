@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 2
+names: ['curved-road-line', 'road-line']
+
+roboflow:
+  workspace: arducar
+  project: lane-detection-xr0vv
+  version: 2
+  license: MIT
+  url: https://universe.roboflow.com/arducar/lane-detection-xr0vv/dataset/2

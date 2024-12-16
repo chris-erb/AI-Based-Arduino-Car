@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lane Detection Control</title>
+    <style>
+        .container h1 {
+            text-align: center;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .video-feed {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .control-row {
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .stop-btn {
+            background-color: #f44336;
+        }
+        .autonomous-btn {
+            background-color: #2196F3;
+        }
+        .instructions {
+            margin-top: 20px;
+        }
+        .video-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .video-box {
+            flex: 1;
+            text-align: center;
+        }
+        .video-box h3 {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Lane Detection Vehicle Control</h1>
+
+        <div class="video-feed">
+            <div class="video-container">
+                <div class="video-box">
+                    <h3>Processed Feed</h3>
+                    <img id="processed-stream" src="http://127.0.0.1:5000/processed_stream" style="width: 100%; max-width: 600px;" alt="Processed Video Feed">
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="control-row">
+                <button onclick="sendAction('FORWARD')" id="forward-btn">Forward (W)</button>
+            </div>
+            <div class="control-row">
+                <button onclick="sendAction('LEFT')" id="left-btn">Left (A)</button>
+                <button onclick="sendAction('STOP')" class="stop-btn" id="stop-btn">Stop (Q)</button>
+                <button onclick="sendAction('RIGHT')" id="right-btn">Right (D)</button>
+            </div>
+            <div class="control-row">
+                <button onclick="sendAction('BACKWARD')" id="backward-btn">Backward (S)</button>
+            </div>
+            <div class="control-row">
+                <button onclick="sendAction('AUTONOMOUS')" class="autonomous-btn" id="autonomous-btn">Autonomous Mode (E)</button>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h2>Keyboard Controls</h2>
+            <p>W - Move Forward</p>
+            <p>S - Move Backward</p>
+            <p>A - Turn Left</p>
+            <p>D - Turn Right</p>
+            <p>Q - Stop</p>
+            <p>E - Toggle Autonomous Mode</p>
+        </div>
+
+    </div>
+
+    <script>
+        const processedImg = document.getElementById('processed-stream');
+        const ESP32_IP = '192.168.4.1';
+
+        function updateStream() {
+            processedImg.src = `http://127.0.0.1:5000/processed_stream`;
+
+            processedImg.onerror = function() {
+                console.log("Error loading processed stream, retrying...");
+                setTimeout(updateStream, 1000);
+            };
+        }
+
+        updateStream();
+
+        setInterval(() => {
+            processedImg.src = `http://127.0.0.1:5000/processed_stream`;
+        }, 1000);
+
+        let isAutonomous = false;
+
+        function sendAction(action) {
+            const commandMap = {
+                'FORWARD': 'FORWARD',
+                'BACKWARD': 'BACKWARD',
+                'LEFT': 'LEFT',
+                'RIGHT': 'RIGHT',
+                'STOP': 'STOP',
+            };
+
+            fetch(`http://192.168.4.1/control?direction=${action}`)
+                .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+                .then(response => response.text())
+                .then(data => console.log('Command sent:', action))
+                .catch(error => console.error('Error:', error));
+        }
+
+        function toggleWASDButtons(disabled) {
+            const buttons = ['forward-btn', 'left-btn', 'backward-btn', 'right-btn'];
+            buttons.forEach(buttonId => {
+                const button = document.getElementById(buttonId);
+                button.style.backgroundColor = disabled ? '#d3d3d3' : '#F0F0F0';
+                button.disabled = disabled;
+            });
+        }
+
+        document.addEventListener('keydown', function(event) {
+    switch (event.key.toLowerCase()) {
+        case 'w':
+            if (!isAutonomous) {
+                sendAction('FORWARD');
+                document.getElementById('forward-btn').style.backgroundColor = '#3d8b40';
+            }
+            break;
+        case 'a':
+            if (!isAutonomous) {
+                sendAction('RIGHT');
+                document.getElementById('left-btn').style.backgroundColor = '#3d8b40';
+            }
+            break;
+        case 's':
+            if (!isAutonomous) {
+                sendAction('BACKWARD');
+                document.getElementById('backward-btn').style.backgroundColor = '#3d8b40';
+            }
+            break;
+        case 'd':
+            if (!isAutonomous) {
+                sendAction('LEFT');
+                document.getElementById('right-btn').style.backgroundColor = '#3d8b40';
+            }
+            break;
+        case 'q':
+            sendAction('STOP');
+            document.getElementById('stop-btn').style.backgroundColor = '#da190b';
+            break;
+        case 'e':
+            fetch('/toggle_autonomous', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Autonomous Mode Status:', data.autonomous_mode);
+                const autonomousBtn = document.getElementById('autonomous-btn');
+                if (data.autonomous_mode === 'enabled') {
+                    isAutonomous = true;
+                    autonomousBtn.style.backgroundColor = '#0b7dda';
+                    toggleWASDButtons(true);
+                } else {
+                    isAutonomous = false;
+                    autonomousBtn.style.backgroundColor = '#2196F3';
+                    toggleWASDButtons(false);
+                }
+            })
+            .catch(error => {
+                console.error('Error toggling autonomous mode:', error);
+            });
+            break;
+            }
+        });
+
+        document.addEventListener('keyup', function(event) {
+            switch(event.key.toLowerCase()) {
+                case 'w':
+                    if (!isAutonomous) {
+                        document.getElementById('forward-btn').style.backgroundColor = '#F0F0F0';
+                    }
+                    break;
+                case 'a':
+                    if (!isAutonomous) {
+                        document.getElementById('left-btn').style.backgroundColor = '#F0F0F0';
+                    }
+                    break;
+                case 's':
+                    if (!isAutonomous) {
+                        document.getElementById('backward-btn').style.backgroundColor = '#F0F0F0';
+                    }
+                    break;
+                case 'd':
+                    if (!isAutonomous) {
+                        document.getElementById('right-btn').style.backgroundColor = '#F0F0F0';
+                    }
+                    break;
+                case 'q':
+                    document.getElementById('stop-btn').style.backgroundColor = '#f44336';
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>
