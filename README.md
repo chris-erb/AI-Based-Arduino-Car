@@ -1,6 +1,6 @@
 # Road Line Detection Results
 
-This repository demonstrates the performance and evaluation metrics of a road line detection model. Below are the results including confusion matrices, evaluation curves, and loss metrics during training.
+This repository demonstrates the performance and evaluation metrics of a trained road line detection model in YOLOv8. Below are the results including confusion matrices, evaluation curves, and loss metrics during training.
 
 ***Note: 'curved-road-line' detection was not implemented in the final implementation due to the poor depth of the ESP32***
 
